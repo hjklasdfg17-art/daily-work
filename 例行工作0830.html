@@ -1,0 +1,728 @@
+HTML
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFCC 輪班工作管理清單</title>
+    <!-- SheetJS 函式庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #1976d2;
+            --primary-dark: #115293;
+            --bg: #f4f6f8;
+            --card: #ffffff;
+            --text: #333333;
+            --text-sub: #666666;
+            --border: #e0e0e0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 920px;
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        h1 { margin: 0; font-size: 1.35rem; color: var(--primary); }
+
+        .sync-bar {
+            background: #f8f9fa;
+            border: 1px dashed #b0bec5;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .sync-bar input {
+            flex: 1;
+            min-width: 250px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .btn-sync {
+            background: #0288d1;
+            color: white;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-sync:hover { background: #0277bd; }
+
+        .file-upload-btn {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            background: #eceff1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: 1px solid #cfd8dc;
+            color: #37474f;
+            font-weight: 500;
+        }
+
+        .file-upload-btn input[type=file] {
+            position: absolute;
+            left: 0; top: 0; opacity: 0;
+            width: 100%; height: 100%;
+            cursor: pointer;
+        }
+
+        .query-panel {
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+        }
+
+        .form-group input, .form-group select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            outline: none;
+            background: #fff;
+        }
+
+        .shift-status-card {
+            background: #e8f0fe;
+            border-left: 4px solid var(--primary);
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .shift-badge {
+            font-size: 1.15rem;
+            font-weight: bold;
+            color: var(--primary-dark);
+        }
+
+        .zone-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .zone-tab {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px;
+            text-align: center;
+            border: 1px solid var(--border);
+            background: #f5f5f5;
+            color: var(--text-sub);
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .zone-tab.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .section-title {
+            font-size: 1.05rem;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            padding-left: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .task-list { list-style: none; padding: 0; margin: 0; }
+
+        .task-item {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .task-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 3px 7px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .badge-shift { background: #e0f2f1; color: #00796b; }
+        .badge-time { background: #fff3e0; color: #e65100; }
+
+        .btn-note {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            color: #1565c0;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .empty-box {
+            text-align: center;
+            padding: 24px;
+            color: #9e9e9e;
+            font-size: 0.9rem;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: #fff;
+            padding: 24px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>RFCC 輪班工作管理清單</h1>
+        <label class="file-upload-btn">
+            📁 上傳本機 Excel / CSV
+            <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)">
+        </label>
+    </div>
+
+    <!-- Google Sheet 雲端連結同步列 -->
+    <div class="sync-bar">
+        <label style="font-size: 0.85rem; font-weight: bold; color: #455a64;">☁️ Google Sheet 網址：</label>
+        <input type="text" id="sheetUrlInput" placeholder="可貼上 Google Sheet 共用網址...">
+        <button class="btn-sync" onclick="syncGoogleSheet()">同步線上資料</button>
+    </div>
+
+    <!-- 查詢條件 -->
+    <div class="query-panel">
+        <div class="form-group">
+            <label>📅 查詢日期：</label>
+            <input type="date" id="dateInput" onchange="calculateAndRender()">
+        </div>
+        <div class="form-group">
+            <label>👤 選擇組別：</label>
+            <select id="teamSelect" onchange="calculateAndRender()">
+                <option value="A">A 班</option>
+                <option value="B">B 班</option>
+                <option value="C">C 班</option>
+                <option value="D">D 班</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 當班推算狀態 -->
+    <div class="shift-status-card">
+        <div>
+            <div style="font-size: 0.85rem; color: var(--text-sub);">推算當日班別狀態：</div>
+            <div class="shift-badge" id="currentShiftText">計算中...</div>
+        </div>
+        <div id="shiftDetailText" style="font-size: 0.85rem; color: var(--text-sub);"></div>
+    </div>
+
+    <!-- 分區頁籤 (動態生成) -->
+    <div class="zone-tabs" id="zoneTabsContainer">
+        <div class="zone-tab active" onclick="switchZone('1000')">1000 區</div>
+        <div class="zone-tab" onclick="switchZone('1800')">1800 區</div>
+        <div class="zone-tab" onclick="switchZone('2000')">2000 區</div>
+    </div>
+
+    <!-- 每日例行 -->
+    <div class="section-title">📌 當班例行工作</div>
+    <ul class="task-list" id="dailyList"></ul>
+
+    <!-- 週期 / 特殊工作 -->
+    <div class="section-title">⏱️ 當班週期 / 指定保養工作</div>
+    <ul class="task-list" id="nonDailyList"></ul>
+</div>
+
+<!-- 標註彈跳視窗 -->
+<div class="modal-overlay" id="noteModal">
+    <div class="modal">
+        <h3 id="modalTitle" style="margin-top:0;">工作詳細標註</h3>
+        <p id="modalContent" style="white-space: pre-wrap; line-height: 1.6;"></p>
+        <div style="text-align: right; margin-top: 16px;">
+            <button class="btn-note" onclick="document.getElementById('noteModal').style.display='none'">關閉</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 預設預載資料庫 (相容包含三區)
+    const defaultDatabase = [
+        {"Zone": "1000", "Shift": "ALL", "Type": "daily", "Time_Rule": "每日每班", "Title": "化學藥品紀錄表", "Note": "每日每班執行"},
+        {"Zone": "1000", "Shift": "早班", "Type": "daily", "Time_Rule": "每日早班", "Title": "R2卸觸媒", "Note": "每日早班執行"},
+        {"Zone": "1000", "Shift": "早班", "Type": "daily", "Time_Rule": "工作日早班", "Title": "新鮮觸媒槽D-1302A/B抽真空", "Note": "工作日早班執行"},
+        {"Zone": "1000", "Shift": "早班", "Type": "daily", "Time_Rule": "工作日早班", "Title": "固定式起重機每日作業前檢點表-觸媒添加用", "Note": "觸媒添加用"},
+        {"Zone": "1000", "Shift": "早班", "Type": "nonDaily", "Time_Rule": "每週一", "Title": "取平衡觸媒x2、三旋x2", "Note": "週一早班執行"},
+        {"Zone": "1000", "Shift": "早班", "Type": "nonDaily", "Time_Rule": "第二個早班星期二", "Title": "C-1102改台，換熱器要排水", "Note": "週二早班執行"},
+        {"Zone": "1000", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "8支進料噴嘴測振動", "Note": "每日中班執行"},
+        {"Zone": "1000", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "有機溶劑化學每日檢點表", "Note": "每日中班執行"},
+        {"Zone": "1000", "Shift": "中班-D1", "Type": "nonDaily", "Time_Rule": "第一天中班", "Title": "D-1102A/B開間歇排放", "Note": "第一天中班執行"},
+        {"Zone": "1000", "Shift": "中班-D1", "Type": "nonDaily", "Time_Rule": "第一天中班", "Title": "開四顆大閥PURGE", "Note": "第一天中班執行"},
+        {"Zone": "1000", "Shift": "中班-D1", "Type": "nonDaily", "Time_Rule": "第一天中班", "Title": "D-1104/1105 Y型濾網排水", "Note": "第一天中班執行"},
+        {"Zone": "1000", "Shift": "中班-D1", "Type": "nonDaily", "Time_Rule": "第一天中班", "Title": "C-1102低點drain pot排水", "Note": "第一天中班執行"},
+        {"Zone": "1000", "Shift": "中班-D1", "Type": "nonDaily", "Time_Rule": "第一天中班", "Title": "CPI水封補水", "Note": "第一天中班執行"},
+        {"Zone": "1000", "Shift": "中班-D2", "Type": "nonDaily", "Time_Rule": "第二天中班", "Title": "添加胡桃核一大一小包", "Note": "第二天中班執行"},
+        {"Zone": "1000", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每月2號", "Title": "Remosa冷卻風扇鰭片清潔LV-1001、LV-1003", "Note": "每月2號中班"},
+        {"Zone": "1000", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每月10號", "Title": "Remosa冷卻風扇鰭片清潔TV-1015、TV-1030、TV-1044", "Note": "每月10號中班"},
+        {"Zone": "1000", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每月18號", "Title": "Remosa冷卻風扇鰭片清潔PV-1015、PV-1051、PV-1026", "Note": "每月18號中班"},
+        {"Zone": "1000", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每月25號", "Title": "Remosa冷卻風扇鰭片清潔XV-1025、PDV-1018", "Note": "每月25號中班"},
+        {"Zone": "1000", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每月1、15號", "Title": "量測廢觸媒槽D-1301媒面", "Note": "每月1、15號中班"},
+        {"Zone": "1000", "Shift": "早班", "Type": "nonDaily", "Time_Rule": "1,4,7,10月5號", "Title": "P-1101A/B、P-1101C/D改台", "Note": "改台前FI-1015B/C/D, FI1016B/C/D先旁路完成復原,並填寫紀錄表"},
+        {"Zone": "2000", "Shift": "ALL", "Type": "daily", "Time_Rule": "每日每班", "Title": "LCO取樣", "Note": "每日每班執行"},
+        {"Zone": "2000", "Shift": "ALL", "Type": "daily", "Time_Rule": "每日每班", "Title": "C-1101現場操作紀錄表", "Note": "每日每班執行"},
+        {"Zone": "2000", "Shift": "早班", "Type": "nonDaily", "Time_Rule": "每週一、三、五", "Title": "P-2110改台清濾網", "Note": "週一、三、五早班"},
+        {"Zone": "2000", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "沖OD孔", "Note": "每日中班執行"},
+        {"Zone": "2000", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "E-2101A/B、E-2102A/B開間歇排放", "Note": "每日中班執行"},
+        {"Zone": "2000", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "測轉機振動", "Note": "每日中班執行"},
+        {"Zone": "2000", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "高壓氣體特定設備作業每日檢點表", "Note": "每日中班執行"},
+        {"Zone": "2000", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "第一種壓力容器操作作業每日檢點表", "Note": "每日中班執行"},
+        {"Zone": "2000", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "有機溶劑化學每日檢點表", "Note": "每日中班執行"},
+        {"Zone": "2000", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每月10、20、30號", "Title": "沖OD孔-編號2000_03/23", "Note": "每月10、20、30號"},
+        {"Zone": "2000", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "雙週日", "Title": "P-2103/5/7/9改台", "Note": "依表訂改台"},
+        {"Zone": "2000", "Shift": "大夜", "Type": "daily", "Time_Rule": "工作日大夜", "Title": "CFB過濾前後及進料取樣", "Note": "工作日大夜執行"},
+        {"Zone": "2000", "Shift": "大夜", "Type": "daily", "Time_Rule": "每日大夜", "Title": "特定化學物質作業每日檢點表", "Note": "每日大夜執行"},
+        {"Zone": "2000", "Shift": "大夜", "Type": "nonDaily", "Time_Rule": "每週二", "Title": "取樣過濾前CFB、進料及LCO至控制室", "Note": "週二大夜執行"},
+        {"Zone": "2000", "Shift": "大夜", "Type": "nonDaily", "Time_Rule": "每週一、三、五", "Title": "E-2101、E-2102鍋爐水取樣", "Note": "週一、三、五大夜"},
+        {"Zone": "2000", "Shift": "大夜", "Type": "nonDaily", "Time_Rule": "每月1號", "Title": "取過濾前CFB至控制室", "Note": "每月1號大夜執行"},
+        {"Zone": "2000", "Shift": "ALL", "Type": "nonDaily", "Time_Rule": "依表訂執行", "Title": "泵浦轉換紀錄表", "Note": "包含 P-2100、注油器、P-2102/08/9010/9011 等"},
+        {"Zone": "1800", "Shift": "ALL", "Type": "daily", "Time_Rule": "每日每班", "Title": "量測P-1801、P-1802水的PH值及沉降", "Note": "每日每班執行"},
+        {"Zone": "1800", "Shift": "ALL", "Type": "daily", "Time_Rule": "每日每班", "Title": "化學藥品紀錄表", "Note": "每日每班執行"},
+        {"Zone": "1800", "Shift": "ALL", "Type": "daily", "Time_Rule": "每日每班", "Title": "CO爐現場操作紀錄表", "Note": "每日每班執行"},
+        {"Zone": "1800", "Shift": "早班", "Type": "daily", "Time_Rule": "每日早班", "Title": "廢熱鍋爐操作作業每日檢點表", "Note": "每日早班執行"},
+        {"Zone": "1800", "Shift": "早班", "Type": "daily", "Time_Rule": "每日早班(2次)", "Title": "啟動吹灰機", "Note": "早班吹灰2次"},
+        {"Zone": "1800", "Shift": "早班", "Type": "nonDaily", "Time_Rule": "每週五", "Title": "P-5702、P-5704改台清濾網", "Note": "週五早班執行"},
+        {"Zone": "1800", "Shift": "早班", "Type": "nonDaily", "Time_Rule": "第二個早班星期六", "Title": "P-1202改台，統計藥劑量", "Note": "週六早班執行"},
+        {"Zone": "1800", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "測轉機振動", "Note": "每日中班執行"},
+        {"Zone": "1800", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "D-1206開間歇排放", "Note": "每日中班執行"},
+        {"Zone": "1800", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班", "Title": "第一種壓力容器操作作業每日檢點表", "Note": "每日中班執行"},
+        {"Zone": "1800", "Shift": "中班", "Type": "daily", "Time_Rule": "每日中班(2次)", "Title": "啟動吹灰機", "Note": "中班吹灰2次"},
+        {"Zone": "1800", "Shift": "中班-D2", "Type": "nonDaily", "Time_Rule": "第二天中班", "Title": "PH-1803/1804分析箱排空清潔", "Note": "第二天中班執行"},
+        {"Zone": "1800", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每週一", "Title": "T-5711換水", "Note": "週一中班執行"},
+        {"Zone": "1800", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每週二", "Title": "P-1801改台", "Note": "週二中班執行"},
+        {"Zone": "1800", "Shift": "中班", "Type": "nonDaily", "Time_Rule": "每週三", "Title": "P-1802改台", "Note": "週三中班執行"},
+        {"Zone": "1800", "Shift": "大夜", "Type": "daily", "Time_Rule": "工作日大夜", "Title": "P-1801/1802/D-5700/D-1206混和補充水取樣", "Note": "大夜執行"},
+        {"Zone": "1800", "Shift": "大夜", "Type": "daily", "Time_Rule": "每日大夜", "Title": "特定化學物質作業每日檢點表", "Note": "大夜執行"},
+        {"Zone": "1800", "Shift": "ALL", "Type": "nonDaily", "Time_Rule": "依表訂執行", "Title": "泵浦轉換紀錄表", "Note": "包含 P-1809、C-1203、P-5700 等"}
+    ];
+
+    let currentZone = '1000';
+    let database = [...defaultDatabase];
+
+    // 2 2 3 3 0 1 1 0 輪班循環定義
+    const CYCLE = [
+        { name: "早班", code: "早班-D1", display: "白班 (第 1 天)", isWork: true }, 
+        { name: "早班", code: "早班-D2", display: "白班 (第 2 天)", isWork: true }, 
+        { name: "中班", code: "中班-D1", display: "中班 (第 1 天)", isWork: true }, 
+        { name: "中班", code: "中班-D2", display: "中班 (第 2 天)", isWork: true }, 
+        { name: "休班", code: "小休",    display: "中班後 OFF (小休)", isWork: false },
+        { name: "大夜", code: "大夜-D1", display: "夜班 (第 1 天)", isWork: true }, 
+        { name: "大夜", code: "大夜-D2", display: "夜班 (第 2 天)", isWork: true }, 
+        { name: "休班", code: "大休",    display: "夜班後 OFF (大休)", isWork: false } 
+    ];
+
+    const BASE_YEAR = 2026;
+    const BASE_MONTH = 0;
+    const BASE_DAY = 1;
+    const TEAM_BASE_INDEX = { A: 2, B: 4, C: 6, D: 0 };
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dateInput').value = today;
+
+        const savedUrl = localStorage.getItem('rfcc_sheet_url');
+        if (savedUrl) {
+            document.getElementById('sheetUrlInput').value = savedUrl;
+        }
+
+        updateZoneTabs();
+        calculateAndRender();
+    });
+
+    function getShiftInfo(team, dateStr) {
+        const parts = dateStr.split('-');
+        const targetYear = parseInt(parts[0], 10);
+        const targetMonth = parseInt(parts[1], 10) - 1;
+        const targetDay = parseInt(parts[2], 10);
+
+        const targetUtc = Date.UTC(targetYear, targetMonth, targetDay);
+        const baseUtc = Date.UTC(BASE_YEAR, BASE_MONTH, BASE_DAY);
+
+        const diffDays = Math.floor((targetUtc - baseUtc) / (1000 * 60 * 60 * 24));
+        const baseIdx = TEAM_BASE_INDEX[team];
+        
+        let cycleIdx = (baseIdx + (diffDays % 8)) % 8;
+        if (cycleIdx < 0) cycleIdx += 8;
+
+        return CYCLE[cycleIdx];
+    }
+
+    // 🌟 升級版：精準時間與班別判斷邏輯 (相容全部進階規則)
+    function isTaskMatchDateAndShift(item, dateStr, shiftInfo) {
+        // 1. 分區比對 (Zone)
+        const matchZone = String(item.Zone) === currentZone || item.Zone === 'ALL' || item.Zone === '通用';
+        if (!matchZone) return false;
+
+        // 2. 班別比對 (Shift)
+        const itemShift = item.Shift ? item.Shift.trim() : 'ALL';
+        let matchShift = false;
+
+        if (itemShift === 'ALL' || itemShift === '通用') {
+            matchShift = true;
+        } else if (itemShift === shiftInfo.code) {
+            matchShift = true; // 如 "中班-D1" 完全相符
+        } else if (itemShift === shiftInfo.name) {
+            matchShift = true; // 泛指大班別 "中班"
+        }
+
+        if (!matchShift) return false;
+
+        // 3. 日期規則解析 (Time_Rule)
+        const rule = item.Time_Rule ? item.Time_Rule.trim() : '';
+        if (!rule || rule.includes('每日') || rule.includes('依表訂') || rule.includes('每班')) {
+            return true;
+        }
+
+        const parts = dateStr.split('-');
+        const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const dayOfMonth = dateObj.getDate();  // 1 ~ 31
+        const dayOfWeek = dateObj.getDay();    // 0(日) ~ 6(六)
+        const month = dateObj.getMonth() + 1;  // 1 ~ 12
+
+        // 3a. 工作日判斷 (週一至週五)
+        if (rule.includes('工作日')) {
+            const isWeekday = (dayOfWeek >= 1 && dayOfWeek <= 5);
+            if (!isWeekday) return false;
+        }
+
+        // 3b. 「X,Y,Z月D號」或「每月 X 號」/「每月 X、Y 號」比對
+        if (rule.includes('月')) {
+            // 解析指定月份 (若未提及具體月份或寫「每月」，則預設對應所有月份)
+            let monthMatches = rule.match(/([\d,]+)\s*月/);
+            let validMonths = [];
+            if (monthMatches) {
+                validMonths = monthMatches[1].split(',').map(n => parseInt(n.trim()));
+            }
+
+            if (validMonths.length > 0 && !validMonths.includes(month)) {
+                return false; // 月份不符
+            }
+
+            // 解析指定日期
+            let dayPart = rule.replace(/.*月/, '');
+            let dayMatches = dayPart.match(/\d+/g);
+            if (dayMatches) {
+                let validDays = dayMatches.map(n => parseInt(n));
+                if (validDays.length > 0 && !validDays.includes(dayOfMonth)) {
+                    return false;
+                }
+            }
+        }
+
+        // 3c. 「第 N 個班別星期 X」(例如: 第二個早班星期二 / 第二個早班星期六)
+        if (rule.includes('第') && (rule.includes('星期') || rule.includes('週'))) {
+            const nthMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 };
+            const weekMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 0, '天': 0 };
+
+            let nthMatch = rule.match(/第([一二三四五1-5])個/);
+            let dayMatch = rule.match(/(?:星期|週)([一二三四五六日天])/);
+
+            if (nthMatch && dayMatch) {
+                let targetNth = nthMap[nthMatch[1]];
+                let targetDayOfWeek = weekMap[dayMatch[1]];
+
+                if (dayOfWeek !== targetDayOfWeek) return false;
+
+                // 計算當天是當月第幾個該星期幾
+                let currentNth = Math.ceil(dayOfMonth / 7);
+                if (currentNth !== targetNth) return false;
+            }
+        }
+
+        // 3d. 一般每週特定天 (每週一、每週三、雙週日)
+        if ((rule.includes('每週') || rule.includes('雙週')) && !rule.includes('第')) {
+            const dayMap = { '日': 0, '天': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
+            let matched = false;
+            for (let key in dayMap) {
+                if (rule.includes(key) && dayOfWeek === dayMap[key]) {
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) return false;
+        }
+
+        // 3e. 輪替天數描述比對 (第一天 / 第二天)
+        if (rule.includes('第一天') && !shiftInfo.code.includes('D1')) return false;
+        if (rule.includes('第二天') && !shiftInfo.code.includes('D2')) return false;
+
+        // 3f. 指定特定月日 (例如 5/1, 5/4)
+        if (rule.includes('/')) {
+            const matches = rule.match(/(\d+)\/(\d+)/g);
+            if (matches) {
+                const todayStr = `${month}/${dayOfMonth}`;
+                if (!matches.includes(todayStr)) return false;
+            }
+        }
+
+        return true;
+    }
+
+    function calculateAndRender() {
+        const team = document.getElementById('teamSelect').value;
+        const dateStr = document.getElementById('dateInput').value;
+        if (!dateStr) return;
+
+        const shiftInfo = getShiftInfo(team, dateStr);
+        const shiftBadge = document.getElementById('currentShiftText');
+        const shiftDetail = document.getElementById('shiftDetailText');
+
+        if (!shiftInfo.isWork) {
+            shiftBadge.textContent = `🌴 ${shiftInfo.display}`;
+            shiftBadge.style.color = "#d32f2f";
+            shiftDetail.textContent = "今日無需排定現場巡檢任務";
+            renderTasks([], []);
+            return;
+        }
+
+        shiftBadge.textContent = `⚡ ${shiftInfo.display}`;
+        shiftBadge.style.color = "var(--primary-dark)";
+        shiftDetail.textContent = `對應系統代碼：${shiftInfo.code}`;
+
+        // 智慧過濾
+        const filtered = database.filter(item => isTaskMatchDateAndShift(item, dateStr, shiftInfo));
+
+        const daily = filtered.filter(t => t.Type === 'daily');
+        const nonDaily = filtered.filter(t => t.Type === 'nonDaily');
+
+        renderTasks(daily, nonDaily);
+    }
+
+    function renderTasks(daily, nonDaily) {
+        renderList('dailyList', daily);
+        renderList('nonDailyList', nonDaily);
+    }
+
+    function renderList(elementId, list) {
+        const el = document.getElementById(elementId);
+        el.innerHTML = '';
+
+        if (!list || list.length === 0) {
+            el.innerHTML = '<div class="empty-box">本班別當日無指定項目</div>';
+            return;
+        }
+
+        list.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'task-item';
+            li.innerHTML = `
+                <div class="task-info">
+                    <span class="badge badge-shift">${item.Shift}</span>
+                    <span class="badge badge-time">${item.Time_Rule || '例行'}</span>
+                    <span><strong>${item.Title}</strong></span>
+                </div>
+                <div>
+                    <button class="btn-note" onclick="openNoteModal('${escapeHtml(item.Title)}', '${escapeHtml(item.Note)}')">📝 說明</button>
+                </div>
+            `;
+            el.appendChild(li);
+        });
+    }
+
+    function switchZone(zone) {
+        currentZone = zone;
+        document.querySelectorAll('.zone-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.textContent.includes(zone));
+        });
+        calculateAndRender();
+    }
+
+    function openNoteModal(title, note) {
+        document.getElementById('modalTitle').textContent = `📌 ${title}`;
+        document.getElementById('modalContent').textContent = note || '（暫無詳細標註事項）';
+        document.getElementById('noteModal').style.display = 'flex';
+    }
+
+    function escapeHtml(str) {
+        return str ? String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+    }
+
+    // 更新分區頁籤
+    function updateZoneTabs() {
+        const zoneSet = new Set(database.map(item => String(item.Zone || '1000').trim()));
+        const container = document.getElementById('zoneTabsContainer');
+        container.innerHTML = '';
+
+        zoneSet.forEach(z => {
+            if (z && z !== 'ALL' && z !== 'undefined') {
+                const div = document.createElement('div');
+                div.className = `zone-tab ${z === currentZone ? 'active' : ''}`;
+                div.textContent = `${z} 區`;
+                div.onclick = () => switchZone(z);
+                container.appendChild(div);
+            }
+        });
+
+        if (!zoneSet.has(currentZone) && zoneSet.size > 0) {
+            currentZone = Array.from(zoneSet)[0];
+        }
+    }
+
+    // 雲端同步 (下載 XLSX 並支援讀取全工作表)
+    function syncGoogleSheet() {
+        let url = document.getElementById('sheetUrlInput').value.trim();
+        if (!url) {
+            alert("請先貼上 Google Sheet 網址！");
+            return;
+        }
+
+        const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (!match) {
+            alert("無法辨識 Google Sheet 網址，請確認網址格式");
+            return;
+        }
+        const sheetId = match[1];
+        const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+
+        fetch(fetchUrl)
+            .then(res => {
+                if (!res.ok) throw new Error("存取失敗，請確認 Google Sheet 已設定為「知道連結的人皆可檢視」");
+                return res.arrayBuffer();
+            })
+            .then(buffer => {
+                const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+                processWorkbook(workbook);
+                localStorage.setItem('rfcc_sheet_url', url);
+                alert(`✅ 雲端同步成功！共讀取 ${workbook.SheetNames.length} 個工作表，共 ${database.length} 筆資料。`);
+            })
+            .catch(err => {
+                alert("❌ 同步失敗：" + err.message);
+            });
+    }
+
+    // 上傳本機 Excel/CSV 檔案 (讀取全工作表)
+    function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            processWorkbook(workbook);
+            alert(`✅ 上傳成功！共讀取 ${workbook.SheetNames.length} 個工作表，共 ${database.length} 筆資料。`);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // 通用 WorkBook 全工作表解析核心
+    function processWorkbook(workbook) {
+        let loadedData = [];
+        workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet);
+
+            json.forEach(row => {
+                const zone = String(row.Zone || row.區域 || row.分區 || sheetName).trim();
+                const shift = String(row.Shift || row.班別 || 'ALL').trim().replace('白班', '早班');
+                const type = String(row.Type || row.類型 || 'daily').trim();
+                const timeRule = String(row.Time_Rule || row.時間規則 || row.時間 || '').trim();
+                const title = String(row.Title || row.工作項目 || row.工作內容 || '').trim();
+                const note = String(row.Note || row.備註 || row.標註 || '').trim();
+
+                if (title) {
+                    loadedData.push({
+                        Zone: zone,
+                        Shift: shift,
+                        Type: type,
+                        Time_Rule: timeRule,
+                        Title: title,
+                        Note: note
+                    });
+                }
+            });
+        });
+
+        if (loadedData.length > 0) {
+            database = loadedData;
+            updateZoneTabs();
+            calculateAndRender();
+        }
+    }
+</script>
+
+</body>
+</html>
