@@ -642,36 +642,7 @@ HTML
     }
 
     // 雲端同步 (下載 XLSX 並支援讀取全工作表)
-    function syncGoogleSheet() {
-        let url = document.getElementById('sheetUrlInput').value.trim();
-        if (!url) {
-            alert("請先貼上 Google Sheet 網址！");
-            return;
-        }
-
-        const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-        if (!match) {
-            alert("無法辨識 Google Sheet 網址，請確認網址格式");
-            return;
-        }
-        const sheetId = match[1];
-        const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
-
-        fetch(fetchUrl)
-            .then(res => {
-                if (!res.ok) throw new Error("存取失敗，請確認 Google Sheet 已設定為「知道連結的人皆可檢視」");
-                return res.arrayBuffer();
-            })
-            .then(buffer => {
-                const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
-                processWorkbook(workbook);
-                localStorage.setItem('rfcc_sheet_url', url);
-                alert(`✅ 雲端同步成功！共讀取 ${workbook.SheetNames.length} 個工作表，共 ${database.length} 筆資料。`);
-            })
-            .catch(err => {
-                alert("❌ 同步失敗：" + err.message);
-            });
-    }
+    
 
     // 上傳本機 Excel/CSV 檔案 (讀取全工作表)
     function handleFileUpload(event) {
