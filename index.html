@@ -691,5 +691,61 @@ HTML
     }
 </script>
 
+// 1. 頁面載入時：優先讀取舊的快取資料，若沒有才顯示預設值
+document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateInput').value = today;
+
+    const savedData = localStorage.getItem('rfcc_local_database');
+    if (savedData) {
+        try {
+            database = JSON.parse(savedData);
+            console.log("⚡ 已載入上次上傳的歷史資料");
+        } catch (e) {
+            database = [...defaultDatabase];
+        }
+    } else {
+        database = [...defaultDatabase];
+    }
+
+    updateZoneTabs();
+    calculateAndRender();
+});
+
+// 2. 檔案解析完成後：將資料存入 localStorage
+function processWorkbook(workbook) {
+    let loadedData = [];
+    workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet);
+
+        json.forEach(row => {
+            const zone = String(row.Zone || row.區域 || row.分區 || sheetName).trim();
+            const shift = String(row.Shift || row.班別 || 'ALL').trim().replace('白班', '早班');
+            const type = String(row.Type || row.類型 || 'daily').trim();
+            const timeRule = String(row.Time_Rule || row.時間規則 || row.時間 || '').trim();
+            const title = String(row.Title || row.工作項目 || row.工作內容 || '').trim();
+            const note = String(row.Note || row.備註 || row.標註 || '').trim();
+
+            if (title) {
+                loadedData.push({
+                    Zone: zone, Shift: shift, Type: type,
+                    Time_Rule: timeRule, Title: title, Note: note
+                });
+            }
+        });
+    });
+
+    if (loadedData.length > 0) {
+        database = loadedData;
+        
+        // 💾 關鍵點：將解析後的資料寫入瀏覽器內存
+        localStorage.setItem('rfcc_local_database', JSON.stringify(database));
+
+        updateZoneTabs();
+        calculateAndRender();
+    }
+}
+    
 </body>
 </html>
